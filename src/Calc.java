@@ -1,6 +1,5 @@
 import java.util.*;
 
-//Evaluates given infix expression
 class Calc {
     static class CalcException extends Exception {
         CalcException(String msg) {
@@ -8,65 +7,100 @@ class Calc {
         }
     }
 
+    interface Operation {
+        short BASIC = 0, FUNCTION = 1, PAREN = 2;
+    }
+
     private static HashMap<String, Integer> operatorPrecedenceMap = new HashMap<>();
+    private static HashMap<String, Short> operationType = new HashMap<>();
 
     static {
+        operationType.put("x", Operation.BASIC);
+        operationType.put("/", Operation.BASIC);
+        operationType.put("-", Operation.BASIC);
+        operationType.put("+", Operation.BASIC);
+        operationType.put("MAX(", Operation.FUNCTION);
+        operationType.put("MIN(", Operation.FUNCTION);
+        operationType.put("AVG(", Operation.FUNCTION);
+        operationType.put("(", Operation.PAREN);
+        operationType.put(")", Operation.PAREN);
+
         operatorPrecedenceMap.put("x", 2);
         operatorPrecedenceMap.put("/", 2);
         operatorPrecedenceMap.put("-", 1);
         operatorPrecedenceMap.put("+", 1);
         operatorPrecedenceMap.put("(", 0);
+        operatorPrecedenceMap.put("MAX(", -1);
+        operatorPrecedenceMap.put("MIN(", -1);
+        operatorPrecedenceMap.put("AVG(", -1);
     }
 
-//    private static boolean isOperator(String symbol) {
-//        return operatorPrecedenceMap.containsKey(symbol);
-//    }
-
-    private static Double performCalc(String operator, LinkedList<Object> argList) {
+    //Applies operation on argument list
+    private static Double performCalc(String operation, LinkedList<Double> argList) {
         Double result = null;
-        switch (operator) {
+        switch (operation) {
             case "+":
-                result = (Double) argList.pollFirst();
-                for (Object argument : argList)
-                    result += (Double) argument;
+                result = argList.pollFirst();
+                for (Double argument : argList)
+                    result += argument;
                 break;
             case "-":
-                result = (Double) argList.pollFirst();
-                for (Object argument : argList)
-                    result -= (Double) argument;
+                result = argList.pollFirst();
+                for (Double argument : argList)
+                    result -= argument;
                 break;
             case "x":
-                result = (Double) argList.pollFirst();
-                for (Object argument : argList)
-                    result *= (Double) argument;
+                result = argList.pollFirst();
+                for (Double argument : argList)
+                    result *= argument;
                 break;
             case "/":
-                result = (Double) argList.pollFirst();
-                for (Object argument : argList)
-                    result /= (Double) argument;
+                result = argList.pollFirst();
+                for (Double argument : argList)
+                    result /= argument;
+                break;
+            case "MAX(":
+                result = argList.pollFirst();
+                for (Double argument : argList)
+                    result = argument > result ? argument : result;
+                break;
+            case "MIN(":
+                result = argList.pollFirst();
+                for (Double argument : argList)
+                    result = argument < result ? argument : result;
+                break;
+            case "AVG(":
+                result = 0.0;
+                for (Double argument : argList)
+                    result += argument;
+                if (argList.size() > 0) {
+                    result /= argList.size();
+                }
                 break;
         }
         return result;
     }
 
-    static Object eval(LinkedList<Object> exp) throws CalcException {
-        Stack<Object> operands = new Stack<>();
-        LinkedList<Object> argList = new LinkedList<>();
-        for (Object symbol : exp) {
-            if (symbol instanceof String) {
+    //Evaluates postfix ll
+    static double eval(LinkedList<String> exp) throws CalcException {
+        Stack<Double> operands = new Stack<>();
+        LinkedList<Double> argList = new LinkedList<>();
+        for (String symbol : exp) {
+            if (isOperand(symbol)) {
+                operands.push(Double.parseDouble(symbol));
+            } else {
                 try {
-                    int n = (Integer) operands.pop();
+                    int n = operands.pop().intValue();
                     for (int i = 0; i < n; ++i)
                         argList.addFirst(operands.pop());
-                    operands.push(performCalc((String) symbol, argList));
+                    operands.push(performCalc(symbol, argList));
                     argList.clear();
                 } catch (EmptyStackException e) {
                     throw new CalcException("Empty Stack");
                 } catch (ClassCastException e) {
                     throw new CalcException("All Operands must be Double");
                 }
-            } else
-                operands.push(symbol);
+            }
         }
         if (operands.size() != 1)
             throw new CalcException("Invalid symbolList expression");
@@ -77,70 +111,86 @@ class Calc {
         return Character.isDigit(ch) || ch == '.' || ch == 'e';
     }
 
-    private static boolean isSpace(char ch) {
+    private static boolean isSpaceCh(char ch) {
         return ch == ' ' || ch == '\t' || ch == ',';
     }
 
     private static boolean isOperatorCh(char ch) {
-        return !isOperandCh(ch) && !isSpace(ch);
+        return !isOperandCh(ch) && !isSpaceCh(ch);
     }
 
-    static LinkedList<Object> parseExpression(String exp) {
-        LinkedList<Object> symbolList = new LinkedList<>();
+    //Parses expression to ll
+    static LinkedList<String> parseExpression(String exp) {
+        LinkedList<String> symbolList = new LinkedList<>();
         StringBuilder symbol = new StringBuilder();
         exp += ' ';
         char prev, curr = exp.charAt(0);
-        boolean isDouble = false;
         for (int i = 0; i < exp.length(); ++i) {
             prev = curr;
             curr = exp.charAt(i);
-            if (isSpace(prev) && isSpace(curr))
+            if (isSpaceCh(prev) && isSpaceCh(curr))
                 continue;
-            if ((isOperandCh(prev) && !isOperandCh(curr) || isOperatorCh(prev) && !isOperatorCh(curr)) && symbol.length() > 0) {
-                if (!isOperandCh(prev))
-                    symbolList.add(symbol.toString());
-                else if (isDouble)
-                    symbolList.add(Double.parseDouble(symbol.toString()));
-                else
-                    symbolList.add(Integer.parseInt(symbol.toString()));
+            if ((isOperandCh(prev) && !isOperandCh(curr) || isOperatorCh(prev) && !isOperatorCh(curr) ||
+                    Character.isLowerCase(prev) && Character.isUpperCase(curr)) && symbol.length() > 0) {
+                symbolList.addLast(symbol.toString());
                 symbol.setLength(0);
-                isDouble = false;
             }
-            if (!isSpace(curr)) {
+            if (!isSpaceCh(curr)) {
                 symbol.append(curr);
-                if (curr == '.' || curr == 'e')
-                    isDouble = true;
             }
         }
         return symbolList;
     }
 
-    static LinkedList<Object> toPostfix(LinkedList<Object> symbol_list) {
-        LinkedList<Object> postfix = new LinkedList<>();
+
+    private static boolean isFunction(String symbol) {
+        return symbol.length() >= 3;
+    }
+
+    private static boolean isOperand(String symbol) {
+        return !operationType.containsKey(symbol);
+    }
+//    private static boolean canMergeOperation(String previous, String current) {
+//        return (previous == null || previous.equals(current)) && !current.equals("(") && !current.equals(")");
+//    }
+
+    //Converts infix to postfix
+    static LinkedList<String> toPostfix(LinkedList<String> symbol_list) {
+        LinkedList<String> postfix = new LinkedList<>();
         Stack<String> operatorStack = new Stack<>();
-        int precedence;
+        int precedence, count = 0;
         symbol_list.addFirst("(");
         symbol_list.addLast(")");
-        for (Object symbol : symbol_list) {
-            if (symbol instanceof String) {
-                if (symbol.equals("("))
-                    operatorStack.push((String) symbol);
-                else if (symbol.equals(")")) {
-                    while (!operatorStack.peek().equals("(")) {
-                        postfix.add(2);
-                        postfix.add(operatorStack.pop());
+        for (String symbol : symbol_list) {
+            if (isOperand(symbol)) {
+                postfix.addLast(symbol);
+                count++;
+            } else {
+                if (symbol.equals("(")) {
+                    operatorStack.push(symbol);
+                } else if (isFunction(symbol)) {
+                    operatorStack.push(symbol);
+                    count = 0;
+                } else if (symbol.equals(")")) {
+                    if (isFunction(operatorStack.peek())) {
+                        postfix.addLast(Integer.toString(count));
+                        postfix.addLast(operatorStack.pop());
+                    } else {
+                        while (!operatorStack.peek().equals("(")) {
+                            postfix.addLast(Integer.toString(2));
+                            postfix.addLast(operatorStack.pop());
+                        }
+                        operatorStack.pop();
                     }
-                    operatorStack.pop();
                 } else {
                     precedence = operatorPrecedenceMap.get(symbol);
                     while (operatorPrecedenceMap.get(operatorStack.peek()) >= precedence) {
-                        postfix.add(2);
-                        postfix.add(operatorStack.pop());
+                        postfix.addLast(Integer.toString(2));
+                        postfix.addLast(operatorStack.pop());
                     }
-                    operatorStack.push((String) symbol);
+                    operatorStack.push(symbol);
                 }
-            } else
-                postfix.add(symbol);
+            }
         }
         return postfix;
     }
