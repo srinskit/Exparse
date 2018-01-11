@@ -10,6 +10,7 @@ Expression Parser in Java
 <li><code>1+MAX(10.0,20,0,50.0)</code></li>
 <li><code>5-AVG(10.0,20,0,50.0)</code></li>
 </ul>
+
 # Known Issues
 <ul>
 <li>Function nesting not supported</li>
