@@ -9,10 +9,9 @@ Expression Parser in Java
 <li><code>MIN(10.0,20,0,50.0)</code></li>
 <li><code>MAX(10.0,20,0,50.0)</code></li>
 <li><code>AVG(10.0,20,0,50.0)</code></li>
-<ul>
-
+</ul>
 # Known Issues
 <ul>
 <li>Function nesting not supported</li>
 <li>Do better after POP2</li>
-<ul>
+</ul>
